@@ -37,7 +37,7 @@ export function makeHand(fig, side, onTap) {
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   const scene = new THREE.Scene();
   const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
-  cam.position.set(0, 1.4, 10.5); cam.lookAt(0, 1.05, 0);
+  cam.position.set(0, 1.1, 9.9); cam.lookAt(0, 0.8, 0);
   scene.add(new THREE.HemisphereLight(0xffffff, 0xffc6e4, 1.9));
   const sun = new THREE.DirectionalLight(0xffffff, 1.7); sun.position.set(3, 6, 7); scene.add(sun);
 
@@ -54,11 +54,14 @@ export function makeHand(fig, side, onTap) {
   hand.add(palm, cuff);
 
   // satu jari = pangkal (pivot) + ruas ujung (joint), masing-masing bisa ditekuk
-  const fingers = [];
+  // Dilihat dari punggung tangan (seperti anak melihat tangannya sendiri di meja): kuku menghadap pemain, jari melipat ke belakang.
+  const fingers = [], nailMat = new THREE.MeshStandardMaterial({ color: 0xffe9f0, roughness: 0.25 });
   function finger(i, r, l1, l2, color) {
     const mat = skinMat(), pivot = new THREE.Group(), joint = new THREE.Group();
-    const seg = l => { const s = new THREE.Mesh(new THREE.CapsuleGeometry(r, l, 6, 14), mat); s.position.y = l / 2; s.userData.i = i; return s; };
+    const seg = l => { const s = new THREE.Mesh(new THREE.CapsuleGeometry(r, l, 6, 14), mat); s.position.y = l / 2; return s; };
     pivot.add(seg(l1)); joint.position.y = l1; pivot.add(joint); joint.add(seg(l2));
+    const nail = new THREE.Mesh(new THREE.SphereGeometry(r * 0.8, 16, 10), nailMat);
+    nail.scale.set(0.85, 1.15, 0.35); nail.position.set(0, l2 * 0.8, r * 0.82); joint.add(nail);
     const tag = label(String(VAL[side][i ? 1 : 0])); tag.position.set(0, l2 + r + 0.38, 0.2); joint.add(tag);
     const f = { i, pivot, joint, mat, tag, color: new THREE.Color(color), t: 0, v: 0, on: false, chg: false };
     fingers[i] = f;
@@ -73,12 +76,21 @@ export function makeHand(fig, side, onTap) {
   thumb.position.set(-1.05 * m, -0.35, 0.1);
   hand.add(thumb);
 
-  // pose jari menurut t (0 = tertutup, 1 = terbuka)
+  // Area sentuh tak terlihat, tetap di tempat walau jarinya terlipat: satu kolom lebar per jari.
+  const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+  const hitBox = (i, w, h, x, y, rz = 0) => {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, 1.6), hitMat);
+    b.position.set(x, y, 0.3); b.rotation.z = rz; b.userData.i = i; hand.add(b);
+  };
+  LEN.forEach((l, k) => hitBox(k + 1, 0.56, l + 1.5, (-0.84 + 0.56 * k) * m, 0.55 + l / 2 + 0.35));
+  hitBox(0, 1.1, 2.1, -1.45 * m, 0.15, 0.55 * m);
+
+  // pose jari menurut t (0 = tertutup, 1 = terbuka). Sudut negatif = melipat menjauhi pemain.
   const lerp = (a, b, t) => a + (b - a) * t;
   function pose(f) {
     const t = f.t;
-    if (f.i) { f.pivot.rotation.x = lerp(1.45, 0, t); f.joint.rotation.x = lerp(1.75, 0.05, t); }
-    else { f.pivot.rotation.set(lerp(0.85, 0, t), 0, lerp(-1.25, 0.55, t) * m); f.joint.rotation.x = lerp(0.9, 0.05, t); }
+    if (f.i) { f.pivot.rotation.x = lerp(-1.5, 0, t); f.joint.rotation.x = lerp(-1.7, -0.05, t); }
+    else { f.pivot.rotation.set(lerp(-1.0, 0, t), 0, lerp(-0.45, 0.55, t) * m); f.joint.rotation.x = lerp(-1.0, -0.05, t); }
   }
 
   let wave = 0;

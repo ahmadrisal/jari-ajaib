@@ -1,5 +1,5 @@
 // Naikkan VERSI setiap kali file game diubah supaya perangkat mengambil versi baru.
-const VERSI = 'jari-ajaib-v3';
+const VERSI = 'jari-ajaib-v4';
 const FILES = ['./', 'index.html', 'game.js', 'hand3d.js', 'three.module.min.js', 'manifest.json', 'icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(VERSI).then(c => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener('activate', e => e.waitUntil(
