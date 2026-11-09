@@ -37,7 +37,7 @@ export function makeHand(fig, side, onTap) {
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   const scene = new THREE.Scene();
   const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
-  cam.position.set(0, 1.1, 9.9); cam.lookAt(0, 0.8, 0);
+  cam.position.set(0, 1.3, 10.2); cam.lookAt(0, 1.0, 0);
   scene.add(new THREE.HemisphereLight(0xffffff, 0xffc6e4, 1.9));
   const sun = new THREE.DirectionalLight(0xffffff, 1.7); sun.position.set(3, 6, 7); scene.add(sun);
 
@@ -76,6 +76,17 @@ export function makeHand(fig, side, onTap) {
   thumb.position.set(-1.05 * m, -0.35, 0.1);
   hand.add(thumb);
 
+  // Jari bayangan: saat mode sentuh, jari yang tertutup tampil transparan di posisi terbukanya, supaya anak tahu harus menyentuh di mana.
+  fingers.forEach(f => {
+    const r = f.i ? 0.25 : 0.3, l = f.i ? LEN[f.i - 1] : 1.35;
+    f.ghost = new THREE.Mesh(new THREE.CapsuleGeometry(r, l, 6, 14),
+      new THREE.MeshBasicMaterial({ color: f.color, transparent: true, depthWrite: false }));
+    f.ghost.geometry.translate(0, l / 2, 0);
+    f.ghost.position.copy(f.pivot.position); f.ghost.position.z += 0.6;
+    if (f.i) f.ghost.position.y += 0.3; else f.ghost.rotation.z = 0.55 * m;
+    hand.add(f.ghost);
+  });
+
   // Area sentuh tak terlihat, tetap di tempat walau jarinya terlipat: satu kolom lebar per jari.
   const hitMat = new THREE.MeshBasicMaterial({ visible: false });
   const hitBox = (i, w, h, x, y, rz = 0) => {
@@ -110,8 +121,10 @@ export function makeHand(fig, side, onTap) {
     const w = canvas.clientWidth, h = canvas.clientHeight;
     if (canvas.width !== Math.round(w * renderer.getPixelRatio())) { renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
     const dt = Math.min(clock.getDelta(), 0.05), T = clock.elapsedTime;
-    const labels = !!canvas.closest('.labels');
+    const labels = !!canvas.closest('.labels'), tap = !!canvas.closest('.tap');
     for (const f of fingers) {
+      f.ghost.visible = tap && f.t < 0.5;
+      f.ghost.material.opacity = 0.3 + 0.15 * Math.sin(T * 4 + f.i);
       f.v += ((f.on ? 1 : 0) - f.t) * 0.22; f.v *= 0.68; f.t += f.v; // pegas: sedikit memantul
       pose(f);
       f.mat.color.lerpColors(SKIN, f.color, Math.min(1, Math.max(0, f.t)));
