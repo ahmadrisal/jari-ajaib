@@ -59,13 +59,14 @@ const P14 = P('9,1..9 8,2 8,3 8,4 8,7 8,8 8,9 7,3 7,4 7,8 7,9 6,4 6,9 5,5 4,6 4,
 const P15 = P('10,1..9 11,2..5 11,7..9 12,3..5 12,8..9 13,4..5 13,9 15,6..9 16,7..9 17,8..9 18,9');
 const opQ = (pairs, op) => { const [a, b] = pick(pairs); return { a, ops: [[op, b]] }; };
 
+// deco: [emoji, kiri %, atas %, ukuran px] — hiasan pemandangan di tepi jalur
 const WORLDS = [
-  { name: 'Pulau Satuan', icon: '🌸', bg: '#ffe3f0' },
-  { name: 'Hutan Puluhan', icon: '🌿', bg: '#d8f5e4' },
-  { name: 'Lembah Operasi Langsung', icon: '🏞️', bg: '#dcefff' },
-  { name: 'Pegunungan Teman Kecil', icon: '⛰️', bg: '#fff0d2' },
-  { name: 'Gua Teman Besar', icon: '🔮', bg: '#ebe0ff' },
-  { name: 'Istana Mental', icon: '🏰', bg: '#ffdfe7' },
+  { name: 'Pulau Satuan', icon: '🌸', deco: [['🌴', 3, 14, 52], ['🐚', 88, 30, 30], ['🦀', 5, 55, 34], ['🌺', 90, 62, 34], ['⛵', 84, 6, 40], ['🐠', 4, 84, 30], ['🏝️', 86, 84, 46]] },
+  { name: 'Hutan Puluhan', icon: '🌿', deco: [['🌲', 2, 10, 54], ['🍄', 88, 26, 34], ['🦔', 4, 50, 34], ['🌳', 85, 52, 54], ['🐿️', 89, 84, 32], ['🌲', 3, 78, 48]] },
+  { name: 'Lembah Operasi Langsung', icon: '🏞️', deco: [['🌈', 82, 8, 46], ['🐟', 4, 30, 32], ['🌾', 88, 46, 36], ['🦆', 4, 62, 34], ['🌼', 89, 78, 32], ['🪷', 5, 88, 32]] },
+  { name: 'Pegunungan Teman Kecil', icon: '⛰️', deco: [['🏔️', 2, 8, 56], ['☁️', 84, 12, 44], ['🐐', 88, 44, 36], ['🦅', 4, 46, 36], ['⛰️', 84, 78, 50], ['🌲', 4, 82, 40]] },
+  { name: 'Gua Teman Besar', icon: '🔮', deco: [['💎', 4, 12, 40], ['🦇', 86, 10, 36], ['🕯️', 88, 44, 34], ['💎', 85, 76, 34], ['✨', 5, 50, 34], ['🪨', 3, 82, 40]] },
+  { name: 'Istana Mental', icon: '🏰', deco: [['🏰', 82, 4, 58], ['🌙', 4, 10, 40], ['🎆', 5, 46, 40], ['☁️', 86, 50, 44], ['🎠', 88, 80, 42], ['✨', 5, 82, 34]] },
 ];
 
 // h: tangan tampil — R (kanan saja), L (sorot kiri), LR (dua), hide (tersembunyi, ada 💡), none (tanpa bantuan)
@@ -135,20 +136,25 @@ const pairSteps = (sum, n) => {
 };
 const opSteps = (a, ops) => [{ v: a, text: opText(a, ops) + ' = ?', say: `${opSay(a, ops)}. Buka ${a} dulu.` }, ...solve(a, ops)];
 
-function makeQuestion(i) {
+// spec = hasil L.gen() (disimpan untuk latihan ulang). build = mode "Tirukan Jari": anak menyusun jari di layar.
+function makeQuestion(i, spec, build) {
   const L = LEVELS[i];
+  if (spec == null) spec = L.gen();
   let q;
   if (L.k === 'read') {
-    const v = L.gen();
-    q = { v, answer: v, text: 'Berapa angkanya?', say: 'Tirukan jarinya! Berapa angkanya?', explain: [{ v, say: `Ini angka ${v}. Tirukan ya!` }] };
+    const v = spec;
+    q = build
+      ? { v: 0, answer: v, build: true, text: `✋ ${v}`, say: `Buat angka ${v}! Sentuh jari di layar, lalu tekan cek.`, explain: [{ v, say: `Begini angka ${v}. Tirukan ya!` }] }
+      : { v, answer: v, text: 'Berapa angkanya?', say: 'Tirukan jarinya! Berapa angkanya?', explain: [{ v, say: `Ini angka ${v}. Tirukan ya!` }] };
   } else if (L.k === 'pair') {
-    const n = L.gen();
+    const n = spec;
     q = { v: n, answer: L.sum - n, text: `${n} + ? = ${L.sum}`, explain: pairSteps(L.sum, n),
           say: `${n}, teman ${L.sum === 5 ? 'kecil' : 'besar'}nya berapa supaya jadi ${L.sum}?` };
   } else {
-    const { a, ops } = L.gen();
+    const { a, ops } = spec;
     q = { v: a, a, ops, answer: calc(a, ops), text: opText(a, ops) + ' = ?', say: opSay(a, ops) + ', sama dengan berapa?', explain: opSteps(a, ops) };
   }
+  q.spec = spec;
   q.choices = choicesFor(q.answer, L.pool);
   return q;
 }
@@ -169,9 +175,12 @@ if (typeof module !== 'undefined') module.exports = { LEVELS, makeQuestion, solv
 if (typeof document !== 'undefined') {
   const $ = s => document.querySelector(s);
   const KEY = 'jari-ajaib';
-  let best = [];
-  try { best = JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) {}
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(best)); } catch (e) {} };
+  const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } };
+  const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+  let best = load(KEY, []);
+  let review = load(KEY + '-ulang', []); // soal yang salah: { lv, spec, build, ok } — keluar setelah benar 2x
+  let peri = load(KEY + '-peri', { own: ['peri'], wear: { base: 'peri' }, spent: 0 });
+  const save = () => store(KEY, best);
   const passed = i => (best[i] || 0) >= PASS;
   const unlocked = i => i === 0 || passed(i - 1);
   const starsOf = s => (s >= 10 ? 3 : s >= 9 ? 2 : s >= PASS ? 1 : 0);
@@ -248,12 +257,25 @@ if (typeof document !== 'undefined') {
     });
     s += `<g transform="translate(${L ? 145 : 80},185) rotate(${L ? 50 : -50})"><g class="f thumb" data-i="0">` +
          `<rect x="-17" y="-88" width="34" height="98" rx="17"/><text x="0" y="-62">${val[0]}</text></g></g>`;
-    s += `<rect class="palm" x="${L ? 10 : 65}" y="138" width="150" height="82" rx="38"/></svg>`;
+    s += `<rect class="palm" x="${L ? 10 : 65}" y="138" width="150" height="82" rx="38"/>`;
+    // area sentuh tak terlihat (jari tertutup terlalu kecil untuk disentuh)
+    FX.forEach((x, k) => { s += `<rect class="hit" data-i="${k + 1}" x="${mx(x) - 2}" y="${140 - FH[k] - 4}" width="${FW + 4}" height="${FH[k] + 4}"/>`; });
+    s += `<g transform="translate(${L ? 145 : 80},185) rotate(${L ? 50 : -50})"><rect class="hit" data-i="0" x="-22" y="-92" width="44" height="80"/></g></svg>`;
     return s;
   }
   $('#hand-L').insertAdjacentHTML('afterbegin', handSVG('L'));
   $('#hand-R').insertAdjacentHTML('afterbegin', handSVG('R'));
   let shown = 0;
+  const handValue = s => { const f = [...document.querySelectorAll(`#hand-${s} .f`)].map(g => g.classList.contains('on'));
+    return (f[4] ? 5 : 0) + f.slice(0, 4).filter(Boolean).length; }; // .f urut DOM: telunjuk..kelingking, lalu jempol
+  const tapped = () => handValue('L') * 10 + handValue('R');
+  document.querySelectorAll('.hit').forEach(h => (h.onclick = () => {
+    const hand = h.closest('.hand'), hs = $('#hands');
+    if (!hs.classList.contains('tap') || busy || (hs.classList.contains('focusL') && hand.id === 'hand-R')) return;
+    const g = hand.querySelector(`.f[data-i="${h.dataset.i}"]`);
+    g.classList.toggle('on'); g.classList.remove('chg');
+    tone([g.classList.contains('on') ? 660 : 440], 'triangle', 0.08);
+  }));
   function setHands(v) {
     if (v == null) return;
     [['L', digit(v, 10), digit(shown, 10)], ['R', v % 10, shown % 10]].forEach(([s, d, pd]) => {
@@ -267,29 +289,107 @@ if (typeof document !== 'undefined') {
     shown = v;
   }
 
+  // --- kostum peri ---
+  const OUTFITS = [
+    { id: 'peri', slot: 'base', em: '🧚‍♀️', n: 'Peri', price: 0 },
+    { id: 'putri', slot: 'base', em: '👸', n: 'Putri', price: 6 },
+    { id: 'duyung', slot: 'base', em: '🧜‍♀️', n: 'Putri Duyung', price: 8 },
+    { id: 'unicorn', slot: 'base', em: '🦄', n: 'Unicorn', price: 10 },
+    { id: 'pita', slot: 'head', em: '🎀', n: 'Pita', price: 2 },
+    { id: 'bunga', slot: 'head', em: '🌸', n: 'Bunga', price: 2 },
+    { id: 'mahkota', slot: 'head', em: '👑', n: 'Mahkota', price: 3 },
+    { id: 'topi', slot: 'head', em: '🎩', n: 'Topi Sulap', price: 4 },
+    { id: 'balon', slot: 'hand', em: '🎈', n: 'Balon', price: 2 },
+    { id: 'permen', slot: 'hand', em: '🍭', n: 'Permen', price: 2 },
+    { id: 'tongkat', slot: 'hand', em: '🪄', n: 'Tongkat Ajaib', price: 3 },
+    { id: 'bintang', slot: 'hand', em: '⭐', n: 'Bintang', price: 4 },
+  ];
+  const outfit = id => OUTFITS.find(o => o.id === id);
+  const totalStars = () => LEVELS.reduce((s, _, i) => s + starsOf(best[i] || 0), 0);
+  const wallet = () => totalStars() - peri.spent;
+  function mascotHTML() {
+    const w = peri.wear, head = w.head && outfit(w.head), hand = w.hand && outfit(w.hand);
+    return `<span class="pm">${outfit(w.base || 'peri').em}${head ? `<i class="pm-head">${head.em}</i>` : ''}${hand ? `<i class="pm-hand">${hand.em}</i>` : ''}</span>`;
+  }
+  const dress = () => document.querySelectorAll('.mascot').forEach(m => (m.innerHTML = mascotHTML()));
+
+  function closet() {
+    dress();
+    $('#wallet').textContent = `⭐ ${wallet()} bintang`;
+    const g = $('#outfits');
+    g.innerHTML = '';
+    OUTFITS.forEach(o => {
+      const own = peri.own.includes(o.id), worn = peri.wear[o.slot] === o.id, b = document.createElement('button');
+      b.className = 'sticker outfit' + (worn ? ' worn' : '') + (!own && wallet() < o.price ? ' empty' : '');
+      b.innerHTML = `<span class="em">${o.em}</span><span class="nm">${o.n}</span><span class="tag">${worn ? 'Dipakai ✓' : own ? 'Pakai' : `⭐ ${o.price}`}</span>`;
+      b.onclick = () => {
+        if (!own) {
+          if (wallet() < o.price) { oops(); return speak(`Kumpulkan ${o.price - wallet()} bintang lagi ya`); }
+          peri.own.push(o.id); peri.spent += o.price;
+          ding(); confetti([o.em, '⭐', '💖']); speak(`Hore! ${o.n} sudah jadi milikmu!`);
+        }
+        peri.wear[o.slot] = worn && o.slot !== 'base' ? null : o.id; // aksesori bisa dilepas, karakter tidak
+        store(KEY + '-peri', peri);
+        closet();
+      };
+      g.appendChild(b);
+    });
+    if (!$('#closet').hidden) return;
+    show('closet');
+    speak('Lemari peri! Tukar bintangmu dengan kostum.');
+  }
+
   // --- peta petualangan ---
   function home() {
     const map = $('#worlds');
     map.innerHTML = '';
     WORLDS.forEach((w, wi) => {
       const sec = document.createElement('div');
-      sec.className = 'world';
-      sec.style.setProperty('--bg', w.bg);
-      sec.innerHTML = `<h2>${w.icon} Dunia ${wi + 1}<small>${w.name}</small></h2><div class="path"></div>`;
-      [0, 1, 2].forEach(k => {
+      sec.className = 'world w' + wi;
+      const xs = [0, 1, 2].map(k => [-1, 0, 1][(k + wi) % 3]);
+      const pts = xs.map((x, k) => [50 + x * 28, 53 + k * 170]);
+      const d = pts.map(([x, y], k) => (k ? `C${pts[k - 1][0]} ${pts[k - 1][1] + 85} ${x} ${y - 85} ${x} ${y}` : `M${x} ${y}`)).join(' ');
+      sec.innerHTML = `<div class="deco">${w.deco.map(([e, x, y, s]) => `<i style="left:${x}%;top:${y}%;font-size:${s}px">${e}</i>`).join('')}</div>
+        <h2>${w.icon} Dunia ${wi + 1}<small>${w.name}</small></h2>
+        <div class="path"><svg viewBox="0 0 100 520" preserveAspectRatio="none"><path d="${d}"/></svg></div>`;
+      xs.forEach((x, k) => {
         const i = wi * 3 + k, L = LEVELS[i], open = unlocked(i), ok = passed(i), st = starsOf(best[i] || 0);
+        const nRev = review.filter(r => r.lv === i).length;
         const b = document.createElement('button');
         b.className = 'node' + (open ? '' : ' locked') + (ok ? ' done' : '');
-        b.style.setProperty('--x', [-1, 0, 1][(k + wi) % 3]);
-        b.innerHTML = `<span class="dot">${open ? i + 1 : '🔒'}${ok ? `<i class="badge">${L.st[0]}</i>` : ''}</span>
+        b.style.setProperty('--x', x);
+        b.style.top = k * 170 + 10 + 'px';
+        b.innerHTML = `<span class="dot">${open ? i + 1 : '🔒'}${ok ? `<i class="badge">${L.st[0]}</i>` : ''}${nRev ? `<i class="rev">🔁${nRev}</i>` : ''}</span>
           <span class="nm">${L.n}</span><span class="st">${'⭐'.repeat(st)}${'☆'.repeat(3 - st)}</span>`;
         b.onclick = () => (open ? startLevel(i) : (oops(), speak('Selesaikan level sebelumnya dulu ya')));
         sec.querySelector('.path').appendChild(b);
       });
       map.appendChild(sec);
     });
+    map.insertAdjacentHTML('beforeend', '<div id="walker" class="mascot"></div>');
     $('#btn-book').textContent = `📖 ${LEVELS.filter((_, i) => passed(i)).length}/18`;
+    $('#btn-closet').textContent = `👗 ⭐${wallet()}`;
     show('map');
+    dress();
+    // peri berdiri di level terdepan; kalau ada level baru terbuka, peri terbang ke sana
+    const fi = LEVELS.findIndex((_, i) => !passed(i)), f = fi < 0 ? 17 : fi;
+    const from = Math.min(load(KEY + '-pos', f), f);
+    const walker = $('#walker'), nodes = document.querySelectorAll('.node .dot');
+    const place = i => { const r = nodes[i].getBoundingClientRect(), m = map.getBoundingClientRect();
+      walker.style.left = r.right - m.left - 6 + 'px'; walker.style.top = r.top - m.top - 34 + 'px'; };
+    place(from);
+    nodes[from].scrollIntoView({ block: 'center' });
+    if (from !== f) {
+      const my = token;
+      setTimeout(() => {
+        if (my !== token) return;
+        walker.classList.add('fly'); place(f);
+        nodes[f].scrollIntoView({ block: 'center', behavior: 'smooth' });
+        speak('Hore! Level baru terbuka!');
+        setTimeout(() => my === token && confetti(), 1800);
+      }, 800);
+    }
+    store(KEY + '-pos', f);
   }
 
   // --- buku stiker ---
@@ -313,7 +413,7 @@ if (typeof document !== 'undefined') {
   }
 
   // --- permainan ---
-  let lv, qi, results, q, busy, timer;
+  let lv, qi, results, q, busy, timer, queue = [];
   const bubble = t => ($('#bubble').textContent = t);
 
   function setupView(tut) {
@@ -350,6 +450,7 @@ if (typeof document !== 'undefined') {
   // Fase tutorial (± 15 detik): tangan di layar mempraktikkan, anak meniru.
   async function startLevel(i) {
     lv = i; qi = 0; results = [];
+    queue = review.filter(r => r.lv === i).slice(0, 3); // soal yang dulu salah tampil duluan
     show('game');
     const my = token;
     setupView(true);
@@ -364,11 +465,21 @@ if (typeof document !== 'undefined') {
     if (qi >= PER_LEVEL) return finish();
     show('game');
     const my = token, L = LEVELS[lv];
-    q = makeQuestion(lv);
+    const item = queue[qi];
+    q = makeQuestion(lv, item && item.spec, item ? item.build : L.k === 'read' && qi % 2 === 1); // level 1–6: selang-seling Tirukan Jari
+    q.item = item;
     busy = false;
     setupView(false);
     setHands(q.v);
-    bubble(pick(['Ayo hitung pakai jarimu! 🖐️', 'Kamu pasti bisa! ✨', 'Tirukan dengan jarimu ya 🌸']));
+    bubble(item ? '🔁 Soal ulangan! Dulu belum tepat, ayo coba lagi 💪'
+      : q.build ? 'Sentuh jari di layar untuk membuat angkanya ✋' : pick(['Ayo hitung pakai jarimu! 🖐️', 'Kamu pasti bisa! ✨', 'Tirukan dengan jarimu ya 🌸']));
+    if (q.build) {
+      $('#hands').classList.add('tap');
+      $('#eq').textContent = q.text;
+      button('Cek ✓', 'big-btn', () => answer(null, tapped(), true));
+      speak(q.say);
+      return;
+    }
     if (L.chain) { // soal muncul bertahap seperti kereta
       const parts = [String(q.a), ...q.ops.map(([o, b]) => `${o === '+' ? '+' : '−'} ${b}`)];
       for (let k = 1; k <= parts.length; k++) {
@@ -396,11 +507,27 @@ if (typeof document !== 'undefined') {
     }
   }
 
-  async function answer(btn, c) {
+  // Catat hasil + atur daftar latihan ulang: soal salah masuk daftar, keluar setelah benar 2x berturut-turut.
+  function record(ok) {
+    results[qi] = ok;
+    const it = q.item;
+    if (it) {
+      it.ok = ok ? it.ok + 1 : 0;
+      if (it.ok >= 2) review.splice(review.indexOf(it), 1);
+    } else if (!ok) {
+      review.push({ lv, spec: q.spec, build: !!q.build, ok: 0 });
+      if (review.length > 60) review.shift();
+    }
+    store(KEY + '-ulang', review);
+  }
+
+  async function answer(btn, c, build) {
     if (busy) return;
     busy = true; token++; clearTimeout(timer);
     const my = token, ok = c === q.answer;
-    results[qi] = ok;
+    record(ok);
+    $('#hands').classList.remove('tap');
+    $('#after').innerHTML = '';
     $('#timer').hidden = true;
     $('#btn-hint').hidden = true;
     document.querySelectorAll('.choice').forEach(b => {
@@ -409,7 +536,7 @@ if (typeof document !== 'undefined') {
     });
     if (ok) {
       const p = pick(['Hebat!', 'Pintar sekali!', 'Betul!', 'Luar biasa!', 'Keren!']);
-      $('#eq').textContent = q.text.replace('?', q.answer);
+      $('#eq').textContent = build ? `✋ ${q.answer} ✓` : q.text.replace('?', q.answer);
       setHands(q.answer); bubble(p + ' 🎉');
       ding(); confetti(); speak(p);
       setTimeout(() => { if (my === token) { qi++; next(); } }, 1600);
@@ -417,8 +544,10 @@ if (typeof document !== 'undefined') {
     }
     if (btn) btn.classList.add('wrong');
     oops();
-    bubble(btn ? 'Tidak apa-apa, kita lihat caranya 💗' : 'Waktunya habis! ⏰');
-    await speakWait(btn ? 'Tidak apa-apa, kita lihat caranya' : 'Waktunya habis');
+    const msg = build ? `Itu ${c}. Tidak apa-apa, kita lihat caranya` : btn ? 'Tidak apa-apa, kita lihat caranya' : 'Waktunya habis!';
+    if (build) shown = c;
+    bubble(msg + ' 💗');
+    await speakWait(msg);
     $('#hands').hidden = false;
     if (await play(q.explain, my)) button('Lanjut ➜', 'big-btn pulse', () => { qi++; next(); });
   }
@@ -434,8 +563,9 @@ if (typeof document !== 'undefined') {
     best[lv] = Math.max(best[lv] || 0, score);
     save();
     show('result');
-    $('#result-sticker').textContent = ok ? L.st[0] : '🧚';
+    $('#result-sticker').innerHTML = ok ? L.st[0] : mascotHTML();
     $('#result-score').textContent = `${score} / ${PER_LEVEL} benar  ${'⭐'.repeat(starsOf(score))}`;
+    $('#result-wallet').textContent = `Tabungan: ⭐ ${wallet()} bintang untuk Lemari Peri 👗`;
     $('#result-text').textContent = ok ? `${first ? 'Hore! Dapat stiker' : 'Hebat! Stiker'} ${L.st[1]}!` : `Hampir! Butuh ${PASS} benar. Ayo coba lagi!`;
     $('#btn-next').hidden = !ok || lv + 1 >= LEVELS.length;
     $('#btn-cert').hidden = !(ok && lv + 1 === LEVELS.length);
@@ -455,6 +585,8 @@ if (typeof document !== 'undefined') {
   $('#btn-back').onclick = home;
   $('#btn-speak').onclick = () => q && speak(q.say);
   $('#btn-book').onclick = book;
+  $('#btn-closet').onclick = closet;
+  $('#btn-closet-back').onclick = home;
   $('#btn-book-back').onclick = home;
   $('#btn-again').onclick = () => startLevel(lv);
   $('#btn-next').onclick = () => startLevel(lv + 1);
@@ -462,7 +594,10 @@ if (typeof document !== 'undefined') {
   $('#btn-cert').onclick = cert;
   $('#btn-cert-back').onclick = home;
   $('#btn-reset').onclick = () => {
-    if (confirm('Hapus semua progres dan stiker, mulai dari awal?')) { best = []; save(); home(); }
+    if (confirm('Hapus semua progres, stiker, dan kostum, mulai dari awal?')) {
+      best = []; review = []; peri = { own: ['peri'], wear: { base: 'peri' }, spent: 0 };
+      save(); store(KEY + '-ulang', review); store(KEY + '-peri', peri); store(KEY + '-pos', 0); home();
+    }
   };
   if (window.speechSynthesis) speechSynthesis.getVoices();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');

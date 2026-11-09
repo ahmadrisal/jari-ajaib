@@ -38,13 +38,23 @@
   /* --- peta --- */
   #btn-book { position: fixed; top: max(12px, env(safe-area-inset-top)); right: 12px; z-index: 5; background: #fff; border-radius: 22px;
               padding: 10px 16px; font-size: 22px; font-weight: 800; box-shadow: 0 5px 0 var(--lilac), 0 8px 18px #9b6cf044; }
-  .world { background: var(--bg); border-radius: 32px; padding: 14px 10px 22px; margin: 16px 0; box-shadow: inset 0 -6px 0 #0000000d; }
-  .world h2 { margin: 0 0 10px; text-align: center; font-size: clamp(22px, 5vw, 30px); }
-  .world h2 small { display: block; font-size: .65em; font-weight: 700; opacity: .75; }
-  .path { display: flex; flex-direction: column; align-items: center; gap: 14px;
-          background: repeating-linear-gradient(to bottom, #fff 0 12px, transparent 12px 24px) center / 6px 100% no-repeat; }
-  .node { background: none; display: flex; flex-direction: column; align-items: center; gap: 2px;
-          transform: translateX(calc(var(--x) * min(22vw, 140px))); }
+  #worlds { position: relative; }
+  .world { position: relative; overflow: hidden; border-radius: 32px; padding: 14px 10px 16px; margin: 16px 0; box-shadow: inset 0 -6px 0 #0000000d; }
+  .w0 { background: radial-gradient(ellipse 70% 22% at 50% 102%, #ffe6a8 60%, transparent 62%), linear-gradient(#bfe8ff, #e6f7ff 55%, #9fdcf5); }
+  .w1 { background: radial-gradient(ellipse 90% 18% at 20% 104%, #9bdcae 60%, transparent 62%), radial-gradient(ellipse 80% 16% at 90% 104%, #86d29d 60%, transparent 62%), linear-gradient(#e8fbef, #c3efd2); }
+  .w2 { background: linear-gradient(100deg, transparent 44%, #a9dcff88 45% 55%, transparent 56%), linear-gradient(#eaf6ff, #cfe9ff 70%, #bfe6c9); }
+  .w3 { background: linear-gradient(135deg, transparent 60%, #e8c99a 60.5%) , linear-gradient(225deg, transparent 62%, #dcb886 62.5%), linear-gradient(#fff7e6, #ffe5bd); }
+  .w4 { background: radial-gradient(circle at 20% 30%, #9b7bd955 0 8%, transparent 9%), radial-gradient(circle at 80% 70%, #d07bd955 0 7%, transparent 8%), linear-gradient(#4a3278, #2a1d4a); }
+  .w4 h2 { color: #fff; }
+  .w5 { background: radial-gradient(ellipse 60% 14% at 50% 0, #fff 60%, transparent 62%), linear-gradient(#ffe9f3, #ffd0e4 70%, #f7b9d3); }
+  .deco i { position: absolute; font-style: normal; pointer-events: none; filter: drop-shadow(0 3px 2px #0002); }
+  .world h2 { position: relative; margin: 0 0 6px; text-align: center; font-size: clamp(22px, 5vw, 30px); }
+  .world h2 small { display: block; font-size: .65em; font-weight: 700; opacity: .8; }
+  .path { position: relative; height: 520px; }
+  .path svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .path path { fill: none; stroke: #fff; stroke-width: 10; stroke-dasharray: 14 12; stroke-linecap: round; vector-effect: non-scaling-stroke; opacity: .9; }
+  .node { position: absolute; left: calc(50% + var(--x) * 28%); transform: translateX(-50%); background: none;
+          display: flex; flex-direction: column; align-items: center; gap: 2px; width: 170px; }
   .dot { position: relative; width: 86px; height: 86px; border-radius: 50%; background: #fff; display: grid; place-items: center;
          font-size: 38px; font-weight: 900; color: var(--lilac-d); box-shadow: 0 6px 0 var(--lilac), 0 10px 20px #9b6cf033; }
   .node:active .dot { transform: translateY(4px); box-shadow: 0 2px 0 var(--lilac); }
@@ -52,6 +62,25 @@
   .node.locked { opacity: .6; filter: grayscale(.7); }
   .node:not(.locked):not(.done) .dot { animation: glow 1.6s ease-in-out infinite; }
   .badge { position: absolute; right: -10px; top: -10px; font-size: 34px; font-style: normal; }
+  .rev { position: absolute; left: -14px; bottom: -6px; font-size: 14px; font-style: normal; background: #fff; border-radius: 12px; padding: 2px 6px; box-shadow: 0 2px 6px #0002; color: var(--pink-d); }
+  #walker { position: absolute; font-size: 46px; z-index: 3; pointer-events: none; animation: bob 2s ease-in-out infinite; }
+  #walker.fly { transition: left 2s ease-in-out, top 2s ease-in-out; }
+  .pm { position: relative; display: inline-block; line-height: 1; }
+  .pm i { position: absolute; font-style: normal; }
+  .pm-head { top: -.32em; left: 50%; transform: translateX(-50%); font-size: .48em; }
+  .pm-hand { right: -.3em; bottom: -.05em; font-size: .45em; }
+  #btn-closet { position: fixed; top: max(12px, env(safe-area-inset-top)); left: 12px; z-index: 5; background: #fff; border-radius: 22px;
+                padding: 10px 16px; font-size: 22px; font-weight: 800; box-shadow: 0 5px 0 var(--pink), 0 8px 18px #ff8fc744; }
+  #closet .preview { font-size: clamp(90px, 22vw, 140px); text-align: center; margin: 24px 0 4px; }
+  #wallet { text-align: center; font-size: 26px; font-weight: 900; color: #c78a00; margin-bottom: 14px; }
+  #outfits { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  @media (max-width: 520px) { #outfits { grid-template-columns: repeat(3, 1fr); } }
+  .outfit .tag { font-size: 14px; font-weight: 900; color: var(--lilac-d); }
+  .outfit.worn { background: #fff7c7; box-shadow: 0 5px 0 #f5b400; }
+  .outfit.empty .em { filter: grayscale(1); opacity: .45; }
+  .tap .hit { cursor: pointer; }
+  .tap .hand:not(#hand-R) svg, .hands.tap:not(.focusL) #hand-R svg { animation: tapme 1.6s ease-in-out infinite; }
+  .hit { fill: transparent; pointer-events: all; }
   .node .nm { font-weight: 800; font-size: 15px; background: #ffffffcc; padding: 2px 10px; border-radius: 12px; max-width: 46vw; text-align: center; }
   .node .st { color: #f5b400; font-size: 18px; letter-spacing: 2px; }
   #btn-reset { display: block; margin: 24px auto 0; background: none; opacity: .5; font-size: 14px; text-decoration: underline; }
@@ -115,6 +144,7 @@
   #result { text-align: center; padding-top: 8vh; }
   #result-sticker { font-size: clamp(90px, 24vw, 150px); animation: pop .7s; }
   #result-score { font-size: clamp(22px, 5vw, 32px); font-weight: 800; }
+  #result-wallet { font-size: 18px; font-weight: 700; color: #c78a00; margin-top: 6px; }
   #result-text { font-size: clamp(24px, 6vw, 38px); font-weight: 800; color: var(--pink-d); margin: 8px 0 26px; }
   .big-btn { display: block; width: min(360px, 100%); margin: 14px auto; padding: 16px; border-radius: 28px; font-size: 24px; font-weight: 800;
              background: var(--pink); color: #fff; box-shadow: 0 7px 0 var(--pink-d); }
@@ -135,14 +165,16 @@
   @keyframes float { 50% { transform: translateY(-10px); } }
   @keyframes pulse { 50% { transform: scale(1.06); } }
   @keyframes glow { 50% { box-shadow: 0 6px 0 var(--lilac), 0 0 0 10px #ff8fc755; } }
+  @keyframes tapme { 50% { filter: drop-shadow(0 0 10px #ff8fc7); } }
   @keyframes drain { from { width: 100%; } to { width: 0; } }
   @media (prefers-reduced-motion: reduce) { .confetti, .mascot, .bub, .pulse, .dot { animation: none !important; } }
 </style>
 </head>
 <body>
   <section id="map" class="screen">
+    <button id="btn-closet" aria-label="Lemari peri">👗</button>
     <button id="btn-book" aria-label="Buku stiker">📖 0/18</button>
-    <span class="mascot">🧚‍♀️</span>
+    <span class="mascot" style="margin-top:40px">🧚‍♀️</span>
     <h1>Petualangan<br>Jari Ajaib</h1>
     <p class="sub">Berhitung 1–99 dengan 10 jari 🖐️🖐️</p>
     <div id="worlds"></div>
@@ -154,6 +186,14 @@
       <h1 style="flex:1;font-size:clamp(26px,6vw,44px)">Buku Stiker</h1></div>
     <p id="book-full">🎉 Buku stiker penuh! Kamu juara! 🎉</p>
     <div id="stickers"></div>
+  </section>
+
+  <section id="closet" class="screen" hidden>
+    <div class="topbar"><button id="btn-closet-back" class="round" aria-label="Kembali">🗺️</button>
+      <h1 style="flex:1;font-size:clamp(26px,6vw,44px)">Lemari Peri</h1></div>
+    <div class="preview mascot"></div>
+    <div id="wallet"></div>
+    <div id="outfits"></div>
   </section>
 
   <section id="game" class="screen" hidden>
@@ -179,6 +219,7 @@
   <section id="result" class="screen" hidden>
     <div id="result-sticker"></div>
     <div id="result-score"></div>
+    <div id="result-wallet"></div>
     <div id="result-text"></div>
     <button id="btn-cert" class="big-btn pulse">Lihat Sertifikat 🏆</button>
     <button id="btn-next" class="big-btn">Level Berikutnya ➜</button>
