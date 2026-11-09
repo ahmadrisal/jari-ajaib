@@ -265,29 +265,43 @@ if (typeof document !== 'undefined') {
   }
   $('#hand-L').insertAdjacentHTML('afterbegin', handSVG('L'));
   $('#hand-R').insertAdjacentHTML('afterbegin', handSVG('R'));
-  let shown = 0;
-  const handValue = s => { const f = [...document.querySelectorAll(`#hand-${s} .f`)].map(g => g.classList.contains('on'));
-    return (f[4] ? 5 : 0) + f.slice(0, 4).filter(Boolean).length; }; // .f urut DOM: telunjuk..kelingking, lalu jempol
+  // Status jari disimpan di sini; digambar ke tangan 3D (kalau WebGL ada) dan ke SVG cadangan.
+  let shown = 0, h3 = null;
+  const on = { L: fingers(0), R: fingers(0) }, chg = { L: fingers(0), R: fingers(0) };
+  function render(s) {
+    document.querySelectorAll(`#hand-${s} .f`).forEach(g => {
+      g.classList.toggle('on', on[s][+g.dataset.i]); g.classList.toggle('chg', chg[s][+g.dataset.i]);
+    });
+    if (h3) h3[s].set(on[s], chg[s]);
+  }
+  const handValue = s => (on[s][0] ? 5 : 0) + on[s].slice(1).filter(Boolean).length;
   const tapped = () => handValue('L') * 10 + handValue('R');
-  document.querySelectorAll('.hit').forEach(h => (h.onclick = () => {
-    const hand = h.closest('.hand'), hs = $('#hands');
-    if (!hs.classList.contains('tap') || busy || (hs.classList.contains('focusL') && hand.id === 'hand-R')) return;
-    const g = hand.querySelector(`.f[data-i="${h.dataset.i}"]`);
-    g.classList.toggle('on'); g.classList.remove('chg');
-    tone([g.classList.contains('on') ? 660 : 440], 'triangle', 0.08);
-  }));
+  function tapFinger(s, i) {
+    const hs = $('#hands');
+    if (!hs.classList.contains('tap') || busy || (hs.classList.contains('focusL') && s === 'R')) return;
+    on[s][i] = !on[s][i]; chg[s][i] = false; render(s);
+    tone([on[s][i] ? 660 : 440], 'triangle', 0.08);
+  }
+  document.querySelectorAll('.hit').forEach(h => (h.onclick = () => tapFinger(h.closest('.hand').id.slice(-1), +h.dataset.i)));
   function setHands(v) {
     if (v == null) return;
     [['L', digit(v, 10), digit(shown, 10)], ['R', v % 10, shown % 10]].forEach(([s, d, pd]) => {
       const st = fingers(d), pst = fingers(pd);
-      document.querySelectorAll(`#hand-${s} .f`).forEach(g => {
-        const i = +g.dataset.i;
-        g.classList.toggle('on', st[i]);
-        g.classList.toggle('chg', st[i] !== pst[i]);
-      });
+      on[s] = st; chg[s] = st.map((x, i) => x !== pst[i]);
+      render(s);
     });
     shown = v;
   }
+  // ponytail: tanpa WebGL / gagal muat, tangan SVG tetap dipakai
+  import('./hand3d.js').then(({ makeHand }) => {
+    h3 = { L: makeHand($('#hand-L'), 'L', i => tapFinger('L', i)), R: makeHand($('#hand-R'), 'R', i => tapFinger('R', i)) };
+    $('#hands').classList.add('three');
+    render('L'); render('R');
+  }).catch(e => console.warn('3D tidak tersedia', e));
+  const cheer = ok => {
+    document.querySelectorAll('#game .mascot').forEach(m => { m.classList.remove('cheer', 'sad'); void m.offsetWidth; m.classList.add(ok ? 'cheer' : 'sad'); });
+    if (ok && h3) { h3.L.wave(); h3.R.wave(); }
+  };
 
   // --- kostum peri ---
   const OUTFITS = [
@@ -349,7 +363,10 @@ if (typeof document !== 'undefined') {
       const xs = [0, 1, 2].map(k => [-1, 0, 1][(k + wi) % 3]);
       const pts = xs.map((x, k) => [50 + x * 28, 53 + k * 170]);
       const d = pts.map(([x, y], k) => (k ? `C${pts[k - 1][0]} ${pts[k - 1][1] + 85} ${x} ${y - 85} ${x} ${y}` : `M${x} ${y}`)).join(' ');
-      sec.innerHTML = `<div class="deco">${w.deco.map(([e, x, y, s]) => `<i style="left:${x}%;top:${y}%;font-size:${s}px">${e}</i>`).join('')}</div>
+      sec.style.animationDelay = wi * 0.12 + 's';
+      sec.innerHTML = `<div class="deco">${w.deco.map(([e, x, y, s], k) =>
+        `<i class="a${k % 3}" style="left:${x}%;top:${y}%;font-size:${s}px;animation-delay:-${k * 0.9}s">${e}</i>`).join('')}
+        <i class="drift" style="top:${18 + wi * 7}%">${wi === 4 ? '✨' : '☁️'}</i><i class="drift" style="top:${58 - wi * 4}%;animation-delay:-14s">${wi === 4 ? '🦇' : wi < 3 ? '🦋' : '☁️'}</i></div>
         <h2>${w.icon} Dunia ${wi + 1}<small>${w.name}</small></h2>
         <div class="path"><svg viewBox="0 0 100 520" preserveAspectRatio="none"><path d="${d}"/></svg></div>`;
       xs.forEach((x, k) => {
@@ -414,11 +431,11 @@ if (typeof document !== 'undefined') {
 
   // --- permainan ---
   let lv, qi, results, q, busy, timer, queue = [];
-  const bubble = t => ($('#bubble').textContent = t);
+  const bubble = t => { const b = $('#bubble'); b.textContent = t; b.style.animation = 'none'; void b.offsetWidth; b.style.animation = ''; };
 
   function setupView(tut) {
     const L = LEVELS[lv], hs = $('#hands');
-    hs.className = 'hands' + (lv < 9 ? ' labels' : '') + (L.h === 'L' ? ' focusL' : '');
+    hs.className = 'hands' + (h3 ? ' three' : '') + (lv < 9 ? ' labels' : '') + (L.h === 'L' ? ' focusL' : '');
     $('#hand-L').hidden = L.h === 'R';
     hs.hidden = L.h === 'none' || (!tut && L.h === 'hide');
     $('#btn-hint').hidden = true;
@@ -538,12 +555,12 @@ if (typeof document !== 'undefined') {
       const p = pick(['Hebat!', 'Pintar sekali!', 'Betul!', 'Luar biasa!', 'Keren!']);
       $('#eq').textContent = build ? `✋ ${q.answer} ✓` : q.text.replace('?', q.answer);
       setHands(q.answer); bubble(p + ' 🎉');
-      ding(); confetti(); speak(p);
+      ding(); confetti(); speak(p); cheer(true);
       setTimeout(() => { if (my === token) { qi++; next(); } }, 1600);
       return;
     }
     if (btn) btn.classList.add('wrong');
-    oops();
+    oops(); cheer(false);
     const msg = build ? `Itu ${c}. Tidak apa-apa, kita lihat caranya` : btn ? 'Tidak apa-apa, kita lihat caranya' : 'Waktunya habis!';
     if (build) shown = c;
     bubble(msg + ' 💗');

@@ -48,6 +48,11 @@
   .w4 h2 { color: #fff; }
   .w5 { background: radial-gradient(ellipse 60% 14% at 50% 0, #fff 60%, transparent 62%), linear-gradient(#ffe9f3, #ffd0e4 70%, #f7b9d3); }
   .deco i { position: absolute; font-style: normal; pointer-events: none; filter: drop-shadow(0 3px 2px #0002); }
+  .deco .a0 { animation: sway 3.2s ease-in-out infinite alternate; transform-origin: 50% 100%; }
+  .deco .a1 { animation: float 2.8s ease-in-out infinite; }
+  .deco .a2 { animation: spin3d 6s linear infinite; }
+  .deco .drift { left: 0; font-size: 34px; opacity: .85; animation: drift 26s linear infinite; }
+  .world { animation: rise .7s cubic-bezier(.3, 1.4, .5, 1) both; transform-origin: 50% 0; }
   .world h2 { position: relative; margin: 0 0 6px; text-align: center; font-size: clamp(22px, 5vw, 30px); }
   .world h2 small { display: block; font-size: .65em; font-weight: 700; opacity: .8; }
   .path { position: relative; height: 520px; }
@@ -55,7 +60,7 @@
   .path path { fill: none; stroke: #fff; stroke-width: 10; stroke-dasharray: 14 12; stroke-linecap: round; vector-effect: non-scaling-stroke; opacity: .9; }
   .node { position: absolute; left: calc(50% + var(--x) * 28%); transform: translateX(-50%); background: none;
           display: flex; flex-direction: column; align-items: center; gap: 2px; width: 170px; }
-  .dot { position: relative; width: 86px; height: 86px; border-radius: 50%; background: #fff; display: grid; place-items: center;
+  .dot { position: relative; width: 86px; height: 86px; border-radius: 50%; background: radial-gradient(circle at 34% 28%, #fff 0 30%, #efe6ff); display: grid; place-items: center;
          font-size: 38px; font-weight: 900; color: var(--lilac-d); box-shadow: 0 6px 0 var(--lilac), 0 10px 20px #9b6cf033; }
   .node:active .dot { transform: translateY(4px); box-shadow: 0 2px 0 var(--lilac); }
   .node.done .dot { background: #fff7c7; box-shadow: 0 6px 0 #f5b400; color: #c78a00; }
@@ -116,6 +121,13 @@
   .hand { margin: 0; width: min(46%, 270px); transition: opacity .3s; }
   .hand figcaption { font-weight: 800; font-size: clamp(13px, 3vw, 18px); }
   .hand svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .hand .h3 { display: none; width: 100%; aspect-ratio: 1 / 1.05; touch-action: manipulation; }
+  .three .hand .h3 { display: block; }
+  .three .hand svg { display: none; }
+  .tap .hand:not(#hand-R) .h3, .hands.tap:not(.focusL) #hand-R .h3 { animation: tapme 1.6s ease-in-out infinite; }
+  .mascot.cheer { animation: cheer 1s ease-out; }
+  .mascot.sad { animation: sad 1s ease-in-out; }
+  #bubble { animation: pop .35s; }
   .focusL #hand-R { opacity: .35; }
   .palm { fill: #ffd9c2; stroke: #d99a7c; stroke-width: 3; }
   .f { transform-box: fill-box; transform-origin: 50% 100%; transform: scaleY(.46); transition: transform .45s cubic-bezier(.5, 1.6, .5, 1); }
@@ -128,7 +140,9 @@
   .f.chg rect { stroke: #ff3d8b !important; stroke-width: 6; }
   .f text { fill: #fff; font-weight: 900; font-size: 17px; text-anchor: middle; opacity: 0; paint-order: stroke; stroke: #0003; stroke-width: 2px; }
   .labels .f.on text { opacity: 1; }
-  #choices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 22px; }
+  #choices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 22px; perspective: 600px; }
+  .choice { animation: flipin .5s cubic-bezier(.3, 1.5, .5, 1) both; }
+  .choice:nth-child(2) { animation-delay: .08s; } .choice:nth-child(3) { animation-delay: .16s; } .choice:nth-child(4) { animation-delay: .24s; }
   .choice { background: var(--lilac); color: #fff; font-size: clamp(32px, 8vw, 56px); font-weight: 900; padding: 14px 0;
             border-radius: 26px; box-shadow: 0 7px 0 var(--lilac-d); text-shadow: 2px 2px 0 #0002; }
   .choice:active { transform: translateY(5px); box-shadow: 0 2px 0 var(--lilac-d); }
@@ -142,7 +156,7 @@
 
   /* --- hasil & sertifikat --- */
   #result { text-align: center; padding-top: 8vh; }
-  #result-sticker { font-size: clamp(90px, 24vw, 150px); animation: pop .7s; }
+  #result-sticker { font-size: clamp(90px, 24vw, 150px); animation: pop .7s, spin3d 3s 0.7s ease-in-out infinite; }
   #result-score { font-size: clamp(22px, 5vw, 32px); font-weight: 800; }
   #result-wallet { font-size: 18px; font-weight: 700; color: #c78a00; margin-top: 6px; }
   #result-text { font-size: clamp(24px, 6vw, 38px); font-weight: 800; color: var(--pink-d); margin: 8px 0 26px; }
@@ -167,7 +181,14 @@
   @keyframes glow { 50% { box-shadow: 0 6px 0 var(--lilac), 0 0 0 10px #ff8fc755; } }
   @keyframes tapme { 50% { filter: drop-shadow(0 0 10px #ff8fc7); } }
   @keyframes drain { from { width: 100%; } to { width: 0; } }
-  @media (prefers-reduced-motion: reduce) { .confetti, .mascot, .bub, .pulse, .dot { animation: none !important; } }
+  @keyframes sway { from { transform: rotate(-6deg); } to { transform: rotate(6deg); } }
+  @keyframes spin3d { 0%, 100% { transform: perspective(300px) rotateY(-25deg); } 50% { transform: perspective(300px) rotateY(25deg); } }
+  @keyframes drift { from { transform: translateX(-60px); } to { transform: translateX(min(900px, 100vw)); } }
+  @keyframes rise { from { opacity: 0; transform: perspective(900px) rotateX(-35deg) translateY(30px); } }
+  @keyframes flipin { from { opacity: 0; transform: rotateX(90deg); } }
+  @keyframes cheer { 30% { transform: translateY(-34px) rotateY(180deg) scale(1.2); } 60% { transform: translateY(-10px) rotateY(360deg); } }
+  @keyframes sad { 25% { transform: rotate(-12deg); } 50% { transform: rotate(10deg) translateY(4px); } 75% { transform: rotate(-6deg); } }
+  @media (prefers-reduced-motion: reduce) { .confetti, .mascot, .bub, .pulse, .dot, .deco i, .world, .choice, #result-sticker { animation: none !important; } }
 </style>
 </head>
 <body>
